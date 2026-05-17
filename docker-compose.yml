@@ -1,0 +1,66 @@
+services:
+  # ─── Backend API ───
+  api:
+    build:
+      context: ./INVENTARIO-BACKEND
+    container_name: inventario-api
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://inventario:inventario123@db:5432/inventario
+      - JWT_SECRET=${JWT_SECRET:-super-secret-change-in-production}
+      - JWT_EXPIRES_IN=8h
+      - JWT_REFRESH_EXPIRES_IN=7d
+      - PORT=3000
+      - CORS_ORIGIN=*
+      - NODE_ENV=production
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - uploads:/app/uploads
+    restart: unless-stopped
+    networks:
+      - inventario-network
+
+  # ─── Frontend (Angular) ───
+  frontend:
+    build:
+      context: ./INVENTARIO-FRONT
+    container_name: inventario-front
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - inventario-network
+
+  # ─── PostgreSQL ───
+  db:
+    image: postgres:16-alpine
+    container_name: inventario-db
+    environment:
+      POSTGRES_DB: inventario
+      POSTGRES_USER: inventario
+      POSTGRES_PASSWORD: inventario123
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U inventario"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - inventario-network
+
+volumes:
+  pgdata:
+  uploads:
+
+networks:
+  inventario-network:
+    driver: bridge
