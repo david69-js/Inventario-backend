@@ -1,0 +1,113 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  INVENTORY_MANAGER
+  EMPLOYEE
+}
+
+enum ProductStatus {
+  ACTIVE
+  INACTIVE
+  DISCONTINUED
+}
+
+enum MovementType {
+  INCOMING
+  OUTGOING
+  ADJUSTMENT
+}
+
+enum NotificationType {
+  LOW_STOCK
+  MOVEMENT
+  SYSTEM
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(EMPLOYEE)
+  avatar    String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  movements       InventoryMovement[]
+  notifications   Notification[]
+}
+
+model Product {
+  id          String        @id @default(uuid())
+  name        String
+  sku         String        @unique
+  description String?
+  price       Decimal       @db.Decimal(10, 2)
+  stock       Int           @default(0)
+  minStock    Int           @default(5)
+  imageUrl    String?
+  status      ProductStatus @default(ACTIVE)
+  categoryId  String?
+  supplierId  String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  category        Category?            @relation(fields: [categoryId], references: [id])
+  supplier        Supplier?            @relation(fields: [supplierId], references: [id])
+  movements       InventoryMovement[]
+}
+
+model Category {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  products Product[]
+}
+
+model Supplier {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  contactName String?
+  email       String?
+  phone       String?
+  address     String?
+  createdAt   DateTime @default(now())
+
+  products Product[]
+}
+
+model InventoryMovement {
+  id          String       @id @default(uuid())
+  productId   String
+  type        MovementType
+  quantity    Int
+  description String?
+  userId      String
+  createdAt   DateTime     @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  type      NotificationType
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
